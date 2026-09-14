@@ -1,0 +1,6 @@
+{
+  "name": "A Special Date Invitation",
+  "description": "A sweet, romantic, interactive date invitation for Srija with continuous floating balloons, an evasive No button, aesthetic photo memories with romantic quotes, and date selection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
