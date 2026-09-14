@@ -869,8 +869,8 @@ export function getStandaloneHtml(customGifUrl?: string): string {
   <!-- Floating Srija balloons container -->
   <div class="floating-hearts-container" id="floating-balloons"></div>
 
-  <!-- Hidden YouTube Music Player Container (embedded across all screens) -->
-  <div id="yt-player" style="position:fixed; bottom:-999px; right:-999px; width:4px; height:4px; opacity:0; pointer-events:none; overflow:hidden;"></div>
+  <!-- Hidden YouTube Music Player Container (Embedded in viewport to avoid mobile browser throttling) -->
+  <div id="yt-player" style="position:fixed; bottom:0; right:0; width:120px; height:80px; opacity:0.001; pointer-events:none; overflow:hidden; z-index:-10;"></div>
 
   <!-- Floating Play/Pause Button -->
   <div class="music-widget">
@@ -1028,7 +1028,7 @@ export function getStandaloneHtml(customGifUrl?: string): string {
       <!-- Card 1: White & Blue Saree -->
       <div class="polaroid-card" id="polaroid-1">
         <div class="polaroid-img-frame">
-          <img src="/Screenshot 2026-09-14 173310.png" alt="A Quiet Grace" onerror="this.src='/date-illustration.jpg'" />
+          <img src="/photo1.jpg" alt="A Quiet Grace" onerror="if(!this.dataset.tried){this.dataset.tried='1';this.src='/photo1.png';}else if(this.dataset.tried==='1'){this.dataset.tried='2';this.src='/photos/photo1.jpg';}else if(this.dataset.tried==='2'){this.dataset.tried='3';this.src='/Screenshot%202026-09-14%20173310.png';}else{this.src='/date-illustration.jpg';}" />
         </div>
         <div class="polaroid-info">
           <div>
@@ -1044,7 +1044,7 @@ export function getStandaloneHtml(customGifUrl?: string): string {
       <!-- Card 2: Red Saree in Sunlight -->
       <div class="polaroid-card" id="polaroid-2">
         <div class="polaroid-img-frame">
-          <img src="/Screenshot 2026-09-14 173511.png" alt="Sunshine & Silk" onerror="this.src='/date-illustration.jpg'" />
+          <img src="/photo2.jpg" alt="Sunshine & Silk" onerror="if(!this.dataset.tried){this.dataset.tried='1';this.src='/photo2.png';}else if(this.dataset.tried==='1'){this.dataset.tried='2';this.src='/photos/photo2.jpg';}else if(this.dataset.tried==='2'){this.dataset.tried='3';this.src='/Screenshot%202026-09-14%20173511.png';}else{this.src='/date-illustration.jpg';}" />
         </div>
         <div class="polaroid-info">
           <div>
@@ -1060,7 +1060,7 @@ export function getStandaloneHtml(customGifUrl?: string): string {
       <!-- Card 3: Purple Saree with Holi Gulal -->
       <div class="polaroid-card" id="polaroid-3">
         <div class="polaroid-img-frame">
-          <img src="/Screenshot 2026-09-14 173551.png" alt="Colors of Joy" onerror="this.src='/date-illustration.jpg'" />
+          <img src="/photo3.jpg" alt="Colors of Joy" onerror="if(!this.dataset.tried){this.dataset.tried='1';this.src='/photo3.png';}else if(this.dataset.tried==='1'){this.dataset.tried='2';this.src='/photos/photo3.jpg';}else if(this.dataset.tried==='2'){this.dataset.tried='3';this.src='/Screenshot%202026-09-14%20173551.png';}else{this.src='/date-illustration.jpg';}" />
         </div>
         <div class="polaroid-info">
           <div>
@@ -1076,7 +1076,7 @@ export function getStandaloneHtml(customGifUrl?: string): string {
       <!-- Card 4: Reading at Maidan Sunset -->
       <div class="polaroid-card" id="polaroid-4">
         <div class="polaroid-img-frame">
-          <img src="/Screenshot 2026-09-14 173742.png" alt="My Favorite Story" onerror="this.src='/date-illustration.jpg'" />
+          <img src="/photo4.jpg" alt="My Favorite Story" onerror="if(!this.dataset.tried){this.dataset.tried='1';this.src='/photo4.png';}else if(this.dataset.tried==='1'){this.dataset.tried='2';this.src='/photos/photo4.jpg';}else if(this.dataset.tried==='2'){this.dataset.tried='3';this.src='/Screenshot%202026-09-14%20173742.png';}else{this.src='/date-illustration.jpg';}" />
         </div>
         <div class="polaroid-info">
           <div>
@@ -1256,8 +1256,9 @@ export function getStandaloneHtml(customGifUrl?: string): string {
     function playMusicDirectly() {
       if (!manuallyPaused && ytMusicPlayer && typeof ytMusicPlayer.playVideo === 'function') {
         try {
-          ytMusicPlayer.unMute();
-          ytMusicPlayer.setVolume(85);
+          if (typeof ytMusicPlayer.unMute === 'function') ytMusicPlayer.unMute();
+          if (typeof ytMusicPlayer.setVolume === 'function') ytMusicPlayer.setVolume(85);
+          if (typeof ytMusicPlayer.setPlaybackQuality === 'function') ytMusicPlayer.setPlaybackQuality('small');
           ytMusicPlayer.playVideo();
           updateMusicButtonUI(true);
         } catch (e) {}
@@ -1267,7 +1268,7 @@ export function getStandaloneHtml(customGifUrl?: string): string {
     window.onYouTubeIframeAPIReady = function() {
       ytMusicPlayer = new YT.Player('yt-player', {
         height: '80',
-        width: '80',
+        width: '120',
         videoId: 'fjBaWNRYPGk',
         playerVars: {
           autoplay: 1,
@@ -1275,11 +1276,15 @@ export function getStandaloneHtml(customGifUrl?: string): string {
           loop: 1,
           playlist: 'fjBaWNRYPGk',
           playsinline: 1,
-          modestbranding: 1
+          modestbranding: 1,
+          iv_load_policy: 3
         },
         events: {
           onReady: function(e) {
             try {
+              if (typeof e.target.setPlaybackQuality === 'function') {
+                e.target.setPlaybackQuality('small');
+              }
               if (!manuallyPaused) {
                 e.target.unMute();
                 e.target.setVolume(85);
@@ -1295,7 +1300,10 @@ export function getStandaloneHtml(customGifUrl?: string): string {
               updateMusicButtonUI(false);
             } else if (e.data === YT.PlayerState.ENDED) {
               if (!manuallyPaused) {
-                try { e.target.playVideo(); } catch (err) {}
+                try {
+                  e.target.seekTo(0, true);
+                  e.target.playVideo();
+                } catch (err) {}
               }
             }
           }
@@ -1308,10 +1316,11 @@ export function getStandaloneHtml(customGifUrl?: string): string {
     ytScript.src = 'https://www.youtube.com/iframe_api';
     document.head.appendChild(ytScript);
 
-    // Auto-trigger audio on first touch/click anywhere on the page when opened
-    window.addEventListener('click', playMusicDirectly, { capture: true });
-    window.addEventListener('touchstart', playMusicDirectly, { capture: true, passive: true });
-    window.addEventListener('pointerdown', playMusicDirectly, { capture: true });
+    // Auto-trigger audio on first touch, click, or scroll anywhere on page
+    const unlockEvents = ['click', 'touchstart', 'touchend', 'pointerdown', 'scroll', 'keydown'];
+    unlockEvents.forEach(function(evt) {
+      window.addEventListener(evt, playMusicDirectly, { capture: true, passive: true });
+    });
 
     // Toggle button handler
     musicBtn.addEventListener('click', function(e) {

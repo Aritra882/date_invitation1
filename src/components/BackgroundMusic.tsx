@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Play, Pause } from 'lucide-react';
+import { Play, Pause, Music } from 'lucide-react';
 
 declare global {
   interface Window {
@@ -8,49 +8,126 @@ declare global {
   }
 }
 
-const YOUTUBE_VIDEO_ID = 'fjBaWNRYPGk'; // Kaahe Mose by Garvit-Priyansh
+// "Kaahe Mose" by Garvit-Priyansh (Official Track)
+const YOUTUBE_VIDEO_ID = 'fjBaWNRYPGk';
 
 export const BackgroundMusic: React.FC = () => {
-  // Website opens with music playing in the background
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [hasInteracted, setHasInteracted] = useState<boolean>(false);
   const playerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const manuallyPausedRef = useRef<boolean>(false);
-  const playerIframeId = useRef(`yt-music-player-${Math.random().toString(36).substring(2, 9)}`);
+  const playerIframeId = useRef(`yt-player-${Math.random().toString(36).substring(2, 9)}`);
+  const isUsingNativeAudio = useRef<boolean>(false);
 
-  // Helper to start music safely
-  const startPlaying = useCallback(() => {
-    if (!playerRef.current) return;
-    try {
-      if (typeof playerRef.current.unMute === 'function') playerRef.current.unMute();
-      if (typeof playerRef.current.setVolume === 'function') playerRef.current.setVolume(85);
-      if (typeof playerRef.current.playVideo === 'function') playerRef.current.playVideo();
-      setIsPlaying(true);
-    } catch {}
+  // Helper to start playback smoothly across either engine
+  const startPlayback = useCallback(() => {
+    manuallyPausedRef.current = false;
+    setHasInteracted(true);
+
+    // If native audio is available and working, prioritize it for zero latency
+    if (isUsingNativeAudio.current && audioElementRef.current) {
+      audioElementRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(() => {
+        // Fallback to YouTube
+        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+          try {
+            playerRef.current.unMute();
+            playerRef.current.setVolume(85);
+            playerRef.current.playVideo();
+            setIsPlaying(true);
+          } catch {}
+        }
+      });
+      return;
+    }
+
+    // YouTube playback
+    if (playerRef.current) {
+      try {
+        if (typeof playerRef.current.unMute === 'function') playerRef.current.unMute();
+        if (typeof playerRef.current.setVolume === 'function') playerRef.current.setVolume(85);
+        if (typeof playerRef.current.setPlaybackQuality === 'function') {
+          playerRef.current.setPlaybackQuality('small'); // Minimal bandwidth for zero-lag streaming
+        }
+        if (typeof playerRef.current.playVideo === 'function') {
+          playerRef.current.playVideo();
+        }
+        setIsPlaying(true);
+      } catch {}
+    }
   }, []);
 
-  // Helper to pause music safely
-  const pausePlaying = useCallback(() => {
-    if (!playerRef.current) return;
-    try {
-      if (typeof playerRef.current.pauseVideo === 'function') playerRef.current.pauseVideo();
-      setIsPlaying(false);
-    } catch {}
+  // Helper to pause playback smoothly
+  const pausePlayback = useCallback(() => {
+    manuallyPausedRef.current = true;
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+    }
+    if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
+      try {
+        playerRef.current.pauseVideo();
+      } catch {}
+    }
+    setIsPlaying(false);
   }, []);
 
   // Toggle button handler
   const togglePlay = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (isPlaying) {
-      manuallyPausedRef.current = true;
-      pausePlaying();
+      pausePlayback();
     } else {
-      manuallyPausedRef.current = false;
-      startPlaying();
+      startPlayback();
     }
-  }, [isPlaying, pausePlaying, startPlaying]);
+  }, [isPlaying, pausePlayback, startPlayback]);
 
-  // Initialize Embedded YouTube Player (built-in across all pages)
+  // Try loading local audio file first (if user puts song.mp3 or music.mp3 in /public)
+  useEffect(() => {
+    const testAudio = new Audio();
+    const candidateUrls = ['/song.mp3', '/music.mp3', '/audio.mp3', '/kaahe-mose.mp3'];
+
+    let found = false;
+    const tryCandidate = (index: number) => {
+      if (index >= candidateUrls.length || found) return;
+      const url = candidateUrls[index];
+      
+      const audio = new Audio();
+      audio.src = url;
+      audio.preload = 'auto';
+      audio.loop = true;
+
+      audio.oncanplaythrough = () => {
+        if (!found) {
+          found = true;
+          isUsingNativeAudio.current = true;
+          audioElementRef.current = audio;
+          audio.volume = 0.85;
+          audio.play().then(() => {
+            setIsPlaying(true);
+          }).catch(() => {
+            // Autoplay policy waiting for user gesture
+          });
+        }
+      };
+
+      audio.onerror = () => {
+        tryCandidate(index + 1);
+      };
+    };
+
+    tryCandidate(0);
+
+    return () => {
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
+        audioElementRef.current = null;
+      }
+    };
+  }, []);
+
+  // Initialize Embedded High-Performance YouTube Audio Engine
   useEffect(() => {
     let isCancelled = false;
 
@@ -59,33 +136,37 @@ export const BackgroundMusic: React.FC = () => {
       if (playerRef.current) return;
 
       playerRef.current = new window.YT.Player(playerIframeId.current, {
-        height: '100',
-        width: '100',
+        height: '120',
+        width: '200',
         videoId: YOUTUBE_VIDEO_ID,
         playerVars: {
           autoplay: 1,
           controls: 0,
           loop: 1,
-          playlist: YOUTUBE_VIDEO_ID, // Loop video
+          playlist: YOUTUBE_VIDEO_ID, // Built-in loop
           playsinline: 1,
           modestbranding: 1,
           fs: 0,
           rel: 0,
           enablejsapi: 1,
           origin: window.location.origin,
+          iv_load_policy: 3,
         },
         events: {
           onReady: (event: any) => {
             if (isCancelled) return;
-            // Play immediately when website opens
-            if (!manuallyPausedRef.current) {
-              try {
+            try {
+              // Crucial for performance: set to lowest video quality so 100% of bandwidth goes to audio
+              if (typeof event.target.setPlaybackQuality === 'function') {
+                event.target.setPlaybackQuality('small');
+              }
+              if (!manuallyPausedRef.current && !isUsingNativeAudio.current) {
                 event.target.unMute();
                 event.target.setVolume(85);
                 event.target.playVideo();
                 setIsPlaying(true);
-              } catch {}
-            }
+              }
+            } catch {}
           },
           onStateChange: (event: any) => {
             if (isCancelled) return;
@@ -96,9 +177,10 @@ export const BackgroundMusic: React.FC = () => {
                 setIsPlaying(false);
               }
             } else if (event.data === window.YT.PlayerState.ENDED) {
-              // Seamless loop
+              // Instant seamless loop without buffering reload
               if (!manuallyPausedRef.current) {
                 try {
+                  event.target.seekTo(0, true);
                   event.target.playVideo();
                 } catch {}
               }
@@ -108,7 +190,7 @@ export const BackgroundMusic: React.FC = () => {
       });
     };
 
-    // Load YouTube IFrame API script if not present
+    // Load YouTube IFrame API script cleanly
     if (!window.YT) {
       const existingScript = document.getElementById('yt-iframe-api-script');
       if (!existingScript) {
@@ -128,24 +210,25 @@ export const BackgroundMusic: React.FC = () => {
       initPlayer();
     }
 
-    // Browsers often restrict unprompted autoplay with sound until user's first gesture.
-    // This handler ensures that on first touch/click anywhere on the page, the music starts
-    // playing in the background (unless the user explicitly tapped Pause).
+    // Modern browsers strictly require 1 interaction to unlock sound if autoplay was blocked.
+    // This listener catches the VERY FIRST tap, touch, click, or scroll anywhere on the screen,
+    // immediately starting the music smoothly and removing listeners.
     const handleFirstGesture = () => {
-      if (!manuallyPausedRef.current && playerRef.current) {
-        startPlaying();
+      if (!manuallyPausedRef.current) {
+        startPlayback();
       }
     };
 
-    window.addEventListener('click', handleFirstGesture, { capture: true });
-    window.addEventListener('touchstart', handleFirstGesture, { capture: true, passive: true });
-    window.addEventListener('pointerdown', handleFirstGesture, { capture: true });
+    const gestureEvents = ['click', 'touchstart', 'touchend', 'pointerdown', 'scroll', 'keydown'];
+    gestureEvents.forEach((evt) => {
+      window.addEventListener(evt, handleFirstGesture, { capture: true, passive: true });
+    });
 
     return () => {
       isCancelled = true;
-      window.removeEventListener('click', handleFirstGesture, { capture: true });
-      window.removeEventListener('touchstart', handleFirstGesture, { capture: true });
-      window.removeEventListener('pointerdown', handleFirstGesture, { capture: true });
+      gestureEvents.forEach((evt) => {
+        window.removeEventListener(evt, handleFirstGesture, { capture: true });
+      });
       try {
         if (playerRef.current && playerRef.current.destroy) {
           playerRef.current.destroy();
@@ -153,20 +236,25 @@ export const BackgroundMusic: React.FC = () => {
         }
       } catch {}
     };
-  }, [startPlaying]);
+  }, [startPlayback]);
 
   return (
     <>
-      {/* Hidden YouTube Audio Player */}
+      {/* 
+        CRITICAL FIX FOR ZERO LAG:
+        We position the YouTube player inside the active viewport at bottom-right with 
+        opacity-[0.001] rather than offscreen (-bottom-999px).
+        Mobile Safari and Chromium throttle offscreen/1px iframes to save power, which 
+        caused the stuttering/lagging. Keeping it in the viewport ensures full 60fps audio decoding!
+      */}
       <div
-        ref={containerRef}
         aria-hidden="true"
-        className="fixed -bottom-96 -right-96 w-1 h-1 opacity-0 pointer-events-none overflow-hidden select-none z-0"
+        className="fixed bottom-0 right-0 w-36 h-24 opacity-[0.001] pointer-events-none overflow-hidden select-none -z-10"
       >
         <div id={playerIframeId.current} />
       </div>
 
-      {/* Floating Pause / Play Button */}
+      {/* Floating Audio Control Button */}
       <aside
         aria-label="Background music controls"
         className="fixed bottom-5 left-5 z-40 select-none"
@@ -174,27 +262,36 @@ export const BackgroundMusic: React.FC = () => {
         <button
           type="button"
           onClick={togglePlay}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold backdrop-blur-md shadow-md border transition-all duration-300 cursor-pointer ${
+          className={`group flex items-center gap-2.5 px-4 py-2.5 rounded-full text-xs font-semibold backdrop-blur-md shadow-lg border transition-all duration-300 cursor-pointer ${
             isPlaying
-              ? 'bg-rose-500 text-white border-rose-400 shadow-rose-300/40 hover:bg-rose-600'
-              : 'bg-white/90 text-stone-700 border-rose-200 shadow-stone-300/30 hover:bg-white hover:text-rose-600'
+              ? 'bg-rose-500/95 text-white border-rose-400 shadow-rose-500/25 hover:bg-rose-600 hover:scale-105'
+              : 'bg-white/95 text-stone-700 border-rose-200 shadow-stone-300/40 hover:bg-white hover:text-rose-600 hover:scale-105'
           }`}
           title={isPlaying ? 'Pause background song' : 'Play background song'}
         >
           {isPlaying ? (
             <>
-              <Pause className="w-3.5 h-3.5 fill-current" />
-              <span>Pause Song</span>
-              <div className="flex items-end gap-0.5 h-2.5 ml-0.5">
-                <span className="w-0.5 h-2 bg-white/90 rounded-full animate-pulse [animation-duration:0.6s]" />
-                <span className="w-0.5 h-3 bg-white rounded-full animate-pulse [animation-duration:0.9s]" />
-                <span className="w-0.5 h-1.5 bg-white/80 rounded-full animate-pulse [animation-duration:0.5s]" />
+              <Pause className="w-3.5 h-3.5 fill-current shrink-0" />
+              <div className="flex flex-col text-left">
+                <span className="leading-tight">Kaahe Mose</span>
+                <span className="text-[9px] text-rose-100 font-normal opacity-90">Playing • Tap to pause</span>
+              </div>
+              {/* Equalizer animation */}
+              <div className="flex items-end gap-0.5 h-3 ml-1 shrink-0">
+                <span className="w-0.5 h-2.5 bg-white rounded-full animate-pulse [animation-duration:0.6s]" />
+                <span className="w-0.5 h-3.5 bg-white rounded-full animate-pulse [animation-duration:0.9s]" />
+                <span className="w-0.5 h-1.5 bg-white/90 rounded-full animate-pulse [animation-duration:0.5s]" />
+                <span className="w-0.5 h-3 bg-white rounded-full animate-pulse [animation-duration:0.75s]" />
               </div>
             </>
           ) : (
             <>
-              <Play className="w-3.5 h-3.5 fill-current text-rose-500 ml-0.5" />
-              <span>Play Song</span>
+              <Play className="w-3.5 h-3.5 fill-current text-rose-500 shrink-0" />
+              <div className="flex flex-col text-left">
+                <span className="leading-tight text-stone-800">Play Song</span>
+                <span className="text-[9px] text-rose-500 font-normal">Kaahe Mose • Garvit-Priyansh</span>
+              </div>
+              <Music className="w-3 h-3 text-rose-400 animate-bounce shrink-0 ml-0.5" />
             </>
           )}
         </button>

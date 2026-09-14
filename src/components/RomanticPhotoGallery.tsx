@@ -1,76 +1,167 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, Maximize2, X, ChevronLeft, ChevronRight, Camera, Upload, Check, Info } from 'lucide-react';
 
 export interface PhotoMemory {
   id: string;
+  index: number;
   title: string;
   subtitle: string;
   quote: string;
   color: string;
   accentBg: string;
   borderColor: string;
-  defaultSrc: string;
-  fallbackFileName: string;
+  candidateSources: string[];
   illustrationDesc: string;
 }
 
 export const PHOTO_MEMORIES: PhotoMemory[] = [
   {
     id: 'elegance',
+    index: 1,
     title: 'A Quiet Grace',
     subtitle: 'White & Blue Saree • Green Foliage',
     quote: '"In a world full of noise, your elegance is the gentlest poetry. One look from you, and everything else simply fades away."',
-    color: '#1D4ED8', // Royal Blue
+    color: '#1D4ED8',
     accentBg: 'from-emerald-900/10 via-blue-900/10 to-rose-900/10',
     borderColor: 'border-blue-200/80',
-    defaultSrc: '/Screenshot 2026-09-14 173310.png',
-    fallbackFileName: 'Screenshot 2026-09-14 173310.png',
+    candidateSources: [
+      '/photo1.jpg',
+      '/photo1.png',
+      '/photo1.jpeg',
+      '/photos/photo1.jpg',
+      '/photos/photo1.png',
+      '/srija-1.jpg',
+      '/srija-1.png',
+      '/photos/srija-1.jpg',
+      '/photos/srija-1.png',
+      '/Screenshot%202026-09-14%20173310.png',
+      '/Screenshot 2026-09-14 173310.png',
+      '/date-illustration.jpg',
+    ],
     illustrationDesc: 'Srija in traditional Kasavu white saree with royal blue blouse amidst lush green foliage',
   },
   {
     id: 'golden',
+    index: 2,
     title: 'Sunshine & Silk',
     subtitle: 'Crimson Red Saree • Golden Hour',
     quote: '"They say the golden hour is the most magical time of day, but they haven\'t seen your smile caught in the warm sunlight."',
-    color: '#BE123C', // Crimson Rose
+    color: '#BE123C',
     accentBg: 'from-rose-900/10 via-amber-900/10 to-orange-900/10',
     borderColor: 'border-rose-200/80',
-    defaultSrc: '/Screenshot 2026-09-14 173511.png',
-    fallbackFileName: 'Screenshot 2026-09-14 173511.png',
+    candidateSources: [
+      '/photo2.jpg',
+      '/photo2.png',
+      '/photo2.jpeg',
+      '/photos/photo2.jpg',
+      '/photos/photo2.png',
+      '/srija-2.jpg',
+      '/srija-2.png',
+      '/photos/srija-2.jpg',
+      '/photos/srija-2.png',
+      '/Screenshot%202026-09-14%20173511.png',
+      '/Screenshot 2026-09-14 173511.png',
+      '/date-illustration.jpg',
+    ],
     illustrationDesc: 'Srija in ethereal crimson red saree and jhumkas smiling softly in golden afternoon sun',
   },
   {
     id: 'colors',
+    index: 3,
     title: 'Colors of Joy',
     subtitle: 'Purple Saree • Festive Holi Abir',
     quote: '"All the colors of spring couldn\'t hold a candle to the vibrant light in your eyes and that playful, infectious laugh."',
-    color: '#7E22CE', // Royal Purple
+    color: '#7E22CE',
     accentBg: 'from-purple-900/10 via-pink-900/10 to-rose-900/10',
     borderColor: 'border-purple-200/80',
-    defaultSrc: '/Screenshot 2026-09-14 173551.png',
-    fallbackFileName: 'Screenshot 2026-09-14 173551.png',
+    candidateSources: [
+      '/photo3.jpg',
+      '/photo3.png',
+      '/photo3.jpeg',
+      '/photos/photo3.jpg',
+      '/photos/photo3.png',
+      '/srija-3.jpg',
+      '/srija-3.png',
+      '/photos/srija-3.jpg',
+      '/photos/srija-3.png',
+      '/Screenshot%202026-09-14%20173551.png',
+      '/Screenshot 2026-09-14 173551.png',
+      '/date-illustration.jpg',
+    ],
     illustrationDesc: 'Srija with vibrant pink Holi gulal on her cheeks wearing royal purple, smiling playfully by a tree',
   },
   {
     id: 'story',
+    index: 4,
     title: 'My Favorite Story',
     subtitle: 'Sunset at Maidan • Reading Books',
     quote: '"Lost in pages and golden sunsets — you look like the most beautiful story someone waited a lifetime to read."',
-    color: '#B45309', // Warm Amber
+    color: '#B45309',
     accentBg: 'from-amber-900/10 via-rose-900/10 to-orange-900/10',
     borderColor: 'border-amber-200/80',
-    defaultSrc: '/Screenshot 2026-09-14 173742.png',
-    fallbackFileName: 'Screenshot 2026-09-14 173742.png',
+    candidateSources: [
+      '/photo4.jpg',
+      '/photo4.png',
+      '/photo4.jpeg',
+      '/photos/photo4.jpg',
+      '/photos/photo4.png',
+      '/srija-4.jpg',
+      '/srija-4.png',
+      '/photos/srija-4.jpg',
+      '/photos/srija-4.png',
+      '/Screenshot%202026-09-14%20173742.png',
+      '/Screenshot 2026-09-14 173742.png',
+      '/date-illustration.jpg',
+    ],
     illustrationDesc: 'Srija sitting peacefully barefoot on green grass reading a book in warm sunset dusk',
   },
 ];
 
 const STORAGE_KEY = 'srija_romantic_photos_v1';
 
+// Cascading image component that tries multiple filename patterns
+const CascadingImage: React.FC<{
+  customImage?: string;
+  candidates: string[];
+  alt: string;
+  className?: string;
+}> = ({ customImage, candidates, alt, className }) => {
+  const [candidateIndex, setCandidateIndex] = useState(0);
+
+  if (customImage) {
+    return (
+      <img
+        src={customImage}
+        alt={alt}
+        className={className}
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+
+  const currentSrc = candidates[candidateIndex] || '/date-illustration.jpg';
+
+  return (
+    <img
+      src={currentSrc}
+      alt={alt}
+      className={className}
+      referrerPolicy="no-referrer"
+      onError={() => {
+        if (candidateIndex < candidates.length - 1) {
+          setCandidateIndex((prev) => prev + 1);
+        }
+      }}
+    />
+  );
+};
+
 export const RomanticPhotoGallery: React.FC = () => {
   const [photoDataUrls, setPhotoDataUrls] = useState<Record<string, string>>({});
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
+  const [showHelperModal, setShowHelperModal] = useState(false);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   // Load saved photos from localStorage
   useEffect(() => {
@@ -82,16 +173,49 @@ export const RomanticPhotoGallery: React.FC = () => {
     } catch {}
   }, []);
 
+  const handlePhotoUpload = (memoryId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (loadEvent) => {
+      const result = loadEvent.target?.result as string;
+      if (result) {
+        setPhotoDataUrls((prev) => {
+          const updated = { ...prev, [memoryId]: result };
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <section className="w-full max-w-4xl mx-auto mt-10 mb-8 px-2 sm:px-4 select-none">
       {/* Header Banner */}
       <div className="text-center mb-6">
-        <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-800 tracking-tight">
-          Moments of Srija 💕
+        <h2 className="text-xl sm:text-2xl font-serif font-bold text-stone-800 tracking-tight flex items-center justify-center gap-2">
+          <span>Moments of Srija</span>
+          <span className="text-rose-500">💕</span>
         </h2>
         <p className="text-xs sm:text-sm text-stone-600 max-w-lg mx-auto mt-1">
           Every picture holds a feeling, a spark, and a memory I cherish dearly.
         </p>
+
+        {/* Small Discreet Photo Action Bar */}
+        <div className="mt-2.5 flex items-center justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowHelperModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium border border-rose-200/70 transition-colors cursor-pointer"
+          >
+            <Info className="w-3.5 h-3.5" />
+            <span>How to show Srija's photos on Vercel</span>
+          </button>
+        </div>
       </div>
 
       {/* 4 Polaroid Grid */}
@@ -113,28 +237,28 @@ export const RomanticPhotoGallery: React.FC = () => {
             >
               {/* Photo Display Frame */}
               <div className="relative aspect-[4/5] w-full rounded-xl overflow-hidden bg-stone-100 shadow-inner group/photo">
-                {customImage ? (
-                  <img
-                    src={customImage}
-                    alt={memory.illustrationDesc}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  /* Image with fallback */
-                  <img
-                    src={memory.defaultSrc}
-                    alt={memory.title}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      e.currentTarget.src = '/date-illustration.jpg';
-                    }}
-                  />
-                )}
+                <CascadingImage
+                  customImage={customImage}
+                  candidates={memory.candidateSources}
+                  alt={memory.title}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
 
-                {/* Subtle Romantic Overlay with Expand Indicator */}
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-2.5">
+                {/* Subtle Romantic Overlay with Action Indicators */}
+                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-2.5">
+                  {/* Upload / Change Photo button */}
+                  <button
+                    type="button"
+                    title="Upload or change this photo"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      fileInputRefs.current[memory.id]?.click();
+                    }}
+                    className="p-1.5 rounded-full bg-white/90 text-stone-800 hover:bg-white hover:text-rose-600 shadow-xs cursor-pointer transition-transform hover:scale-110"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                  </button>
+
                   <div
                     className="p-1.5 rounded-full bg-white/90 text-stone-800 hover:bg-white shadow-xs"
                     title="View Fullscreen & Quote"
@@ -143,10 +267,22 @@ export const RomanticPhotoGallery: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Hidden file input for uploading photo */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={(el) => (fileInputRefs.current[memory.id] = el)}
+                  onChange={(e) => handlePhotoUpload(memory.id, e)}
+                  className="hidden"
+                />
+
                 {/* Floating subtle number badge */}
                 <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/85 backdrop-blur-xs border border-white/60 text-[10px] font-medium text-stone-700 shadow-xs flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
                   <span>#{index + 1}</span>
+                  {customImage && (
+                    <span className="text-emerald-600 font-bold ml-0.5">✓</span>
+                  )}
                 </div>
               </div>
 
@@ -204,17 +340,11 @@ export const RomanticPhotoGallery: React.FC = () => {
 
               {/* Lightbox Image */}
               <div className="relative aspect-[4/5] sm:aspect-[3/4] max-h-[60vh] w-full bg-stone-100 flex items-center justify-center overflow-hidden">
-                <img
-                  src={
-                    photoDataUrls[PHOTO_MEMORIES[activeLightboxIndex].id] ||
-                    PHOTO_MEMORIES[activeLightboxIndex].defaultSrc
-                  }
+                <CascadingImage
+                  customImage={photoDataUrls[PHOTO_MEMORIES[activeLightboxIndex].id]}
+                  candidates={PHOTO_MEMORIES[activeLightboxIndex].candidateSources}
                   alt={PHOTO_MEMORIES[activeLightboxIndex].title}
                   className="w-full h-full object-contain bg-stone-900"
-                  referrerPolicy="no-referrer"
-                  onError={(e) => {
-                    e.currentTarget.src = '/date-illustration.jpg';
-                  }}
                 />
 
                 {/* Left / Right Nav in Lightbox */}
@@ -262,6 +392,56 @@ export const RomanticPhotoGallery: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Helper Modal: How to ensure photos show for Srija on Vercel */}
+      {showHelperModal && (
+        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-rose-100 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-serif font-bold text-stone-800 flex items-center gap-2">
+                <span>Displaying Srija's Photos on Vercel</span>
+                <span>📸</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowHelperModal(false)}
+                className="p-1 rounded-full text-stone-500 hover:bg-stone-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
+              When Srija opens your Vercel link on her phone, Vercel looks for the photo files inside the <strong>public</strong> folder of your GitHub repository.
+            </p>
+
+            <div className="bg-rose-50/60 rounded-2xl p-3.5 border border-rose-100 text-xs text-stone-700 space-y-2">
+              <p className="font-semibold text-rose-800">
+                To show her real photos automatically, name your 4 photos:
+              </p>
+              <ul className="list-disc list-inside space-y-1 font-mono text-[11px] text-stone-800">
+                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo1.jpg</code> (White & Blue Saree)</li>
+                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo2.jpg</code> (Crimson Red Saree)</li>
+                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo3.jpg</code> (Purple Saree Holi)</li>
+                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo4.jpg</code> (Reading Books Sunset)</li>
+              </ul>
+              <p className="text-[11px] text-stone-500 pt-1">
+                (Or send the 4 images in the AI chat, or upload them directly to GitHub in the <code>public/</code> folder).
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={() => setShowHelperModal(false)}
+                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
