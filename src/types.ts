@@ -1,6 +1,6 @@
 export interface AllowedDate {
   dateString: string; // YYYY-MM-DD
-  displayDate: string; // e.g. "Wed, Sep 16"
+  displayDate: string; // e.g. "Wed, Sep 26"
   dayOfWeek: string;
   dayNumber: number;
   monthName: string;
@@ -10,6 +10,7 @@ export interface AllowedDate {
 export interface DateResponse {
   selectedDate: string;
   place: string;
+  preferredTime?: string;
   note?: string;
   confirmedAt?: string;
 }

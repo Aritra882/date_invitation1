@@ -19,7 +19,8 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
   const dateObj = allowedDates.find((d) => d.dateString === response.selectedDate);
   const formattedDate = dateObj?.displayDate || response.selectedDate;
 
-  const shareText = `Hey! I'm so excited for our date on ${formattedDate} at ${response.place}! 🥰✨${
+  const timeString = response.preferredTime ? ` at ${response.preferredTime}` : '';
+  const shareText = `Hey! I'm so excited for our date on ${formattedDate}${timeString} at ${response.place}! 🥰✨${
     response.note ? ` (${response.note})` : ''
   }`;
 
@@ -79,7 +80,7 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
               When
             </span>
             <span className="text-sm sm:text-base font-bold text-stone-800">
-              {formattedDate}
+              {formattedDate} {response.preferredTime && `• ${response.preferredTime}`}
             </span>
           </div>
         </div>
@@ -100,7 +101,7 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
 
         {response.note && (
           <div className="pt-2 border-t border-rose-200/60 text-xs text-stone-600 italic">
-            "{response.note}"
+            "💕 {response.note}"
           </div>
         )}
       </div>

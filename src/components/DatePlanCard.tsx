@@ -8,9 +8,22 @@ interface DatePlanCardProps {
   onBack?: () => void;
 }
 
+export const TIME_SLOTS = [
+  '11:00 AM',
+  '11:30 AM',
+  '12:00 PM',
+  '12:30 PM',
+  '1:00 PM',
+  '1:30 PM',
+  '2:00 PM',
+  '2:30 PM',
+  '3:00 PM',
+];
+
 export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack }) => {
   const allowedDates = getAllowedDates();
-  const [selectedDate, setSelectedDate] = useState<string>(MIN_DATE_STR); // Default to first available date (Sept 26)
+  const [selectedDate, setSelectedDate] = useState<string>(MIN_DATE_STR); // Default to Sept 26
+  const [selectedTime, setSelectedTime] = useState<string>('12:00 PM');
   const [place, setPlace] = useState<string>('');
   const [note, setNote] = useState<string>('');
   const [showError, setShowError] = useState(false);
@@ -40,6 +53,7 @@ export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack })
     onConfirm({
       selectedDate,
       place: place.trim(),
+      preferredTime: selectedTime,
       note: note.trim() || undefined,
       confirmedAt: new Date().toISOString(),
     });
@@ -123,7 +137,42 @@ export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack })
           </div>
         </div>
 
-        {/* Section 2: Tell Me a Place */}
+        {/* Section 2: Preferred Time (11 AM to 3 PM Chips) */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-stone-800 font-semibold text-sm sm:text-base">
+              <Clock className="w-4 h-4 text-rose-500" />
+              <span>Preferred time</span>
+            </label>
+            <span className="text-xs text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
+              11:00 AM – 3:00 PM
+            </span>
+          </div>
+
+          <div className="relative">
+            <div className="flex gap-2 overflow-x-auto pb-2 pt-1 scrollbar-thin scrollbar-thumb-rose-200">
+              {TIME_SLOTS.map((timeStr) => {
+                const isSelected = timeStr === selectedTime;
+                return (
+                  <button
+                    key={timeStr}
+                    type="button"
+                    onClick={() => setSelectedTime(timeStr)}
+                    className={`flex-shrink-0 flex items-center justify-center py-2.5 px-3.5 rounded-2xl border transition-all text-xs font-semibold cursor-pointer ${
+                      isSelected
+                        ? 'bg-gradient-to-b from-rose-500 to-rose-600 text-white border-rose-600 shadow-md shadow-rose-300/40 scale-105'
+                        : 'bg-stone-50/80 hover:bg-rose-50/60 border-stone-200 text-stone-700 hover:border-rose-200'
+                    }`}
+                  >
+                    <span>{timeStr}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Tell Me a Place */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-2 text-stone-800 font-semibold text-sm sm:text-base">
@@ -149,22 +198,20 @@ export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack })
               }`}
             />
           </div>
-
-
         </div>
 
-        {/* Optional notes/timing */}
-        <div className="space-y-1.5 pt-1">
-          <label className="flex items-center gap-1.5 text-xs text-stone-600 font-medium">
-            <Clock className="w-3.5 h-3.5 text-stone-600" />
-            <span>Any preferred time or sweet details? (Optional)</span>
+        {/* Section 4: Separate Sweet Details Section */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-stone-800 font-semibold text-sm sm:text-base">
+            <Heart className="w-4 h-4 text-rose-500" />
+            <span>Any sweet details you want to add? 💕</span>
           </label>
-          <input
-            type="text"
+          <textarea
+            rows={2}
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g., Evening around 6:30 PM, I love iced matcha, casual outfit..."
-            className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-stone-50/60 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-400/50"
+            placeholder="e.g., Food preferences, outfit vibe, song request, or any special wish..."
+            className="w-full p-3.5 text-xs sm:text-sm rounded-2xl border border-stone-200 bg-stone-50/60 focus:bg-white transition-all focus:outline-none focus:ring-2 focus:ring-rose-400/50 resize-none"
           />
         </div>
 
