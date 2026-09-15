@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Heart,
   Sparkles,
@@ -25,6 +25,7 @@ import { DatePlanCard } from './components/DatePlanCard';
 import { ConfirmationCard } from './components/ConfirmationCard';
 import { RomanticPhotoGallery } from './components/RomanticPhotoGallery';
 import { RomanticSideSparkles } from './components/RomanticSparkles';
+import { SplashScreen } from './components/SplashScreen';
 import { GIF_PRESETS } from './data/dates';
 import { DateResponse } from './types';
 import { getStandaloneHtml } from './utils/generateStandaloneHtml';
@@ -32,7 +33,15 @@ import { getStandaloneHtml } from './utils/generateStandaloneHtml';
 type Step = 'ask' | 'plan' | 'confirmed';
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [mainVisible, setMainVisible] = useState(false);
   const [currentStep, setCurrentStep] = useState<Step>('ask');
+
+  const handleSplashEnter = useCallback(() => {
+    setShowSplash(false);
+    // Small delay so fade-out of splash completes before content appears
+    setTimeout(() => setMainVisible(true), 100);
+  }, []);
   const [selectedGifUrl, setSelectedGifUrl] = useState<string>(GIF_PRESETS[0].url);
   const [customGifInput, setCustomGifInput] = useState<string>('');
   const [dateResponse, setDateResponse] = useState<DateResponse | null>(null);
@@ -97,15 +106,26 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen gradient-bg flex flex-col justify-between py-6 px-4 sm:px-6 select-none overflow-x-hidden">
+    <>
+    {/* BackgroundMusic mounts immediately so YouTube starts buffering silently */}
+    <BackgroundMusic />
+
+    {/* Splash gate */}
+    {showSplash && <SplashScreen onEnter={handleSplashEnter} />}
+
+    <div
+      className="relative min-h-screen gradient-bg flex flex-col justify-between py-6 px-4 sm:px-6 select-none overflow-x-hidden"
+      style={{
+        opacity: mainVisible ? 1 : 0,
+        transition: 'opacity 0.6s ease',
+        pointerEvents: mainVisible ? 'auto' : 'none',
+      }}
+    >
       {/* Background floating hearts */}
       <FloatingHearts count={20} />
 
       {/* Continuous floating balloons named 'Srija' */}
       <FloatingBalloons name="Srija" count={currentStep === 'ask' ? 10 : 6} />
-
-      {/* Romantic Background Music ("Kaahe Mose" by Garvit-Priyansh) */}
-      <BackgroundMusic />
 
       {/* Heart burst particle effect */}
       <HeartBurstCanvas
@@ -376,5 +396,6 @@ export default function App() {
         </div>
       )}
     </div>
+    </>
   );
 }
