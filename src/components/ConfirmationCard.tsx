@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Heart, Calendar, MapPin, Sparkles, Copy, Check, MessageCircle, RotateCcw } from 'lucide-react';
+import { Heart, Calendar, MapPin, Sparkles, Copy, Check, MessageCircle, RotateCcw, ArrowLeft } from 'lucide-react';
 import { DateResponse } from '../types';
 import { getAllowedDates } from '../data/dates';
 
@@ -39,7 +39,25 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
   const whatsappUrl = `https://wa.me/919007506883?text=${encodeURIComponent(shareText)}`;
 
   return (
-    <div className="w-full max-w-lg mx-auto bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl shadow-rose-200/50 border border-rose-100 text-center animate-fadeIn">
+    <div className="w-full max-w-lg mx-auto bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl shadow-rose-200/50 border border-rose-100 text-center animate-fadeIn relative">
+      {/* Top Bar with Back Button */}
+      <div className="flex items-center justify-between mb-4">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200/80 transition-all hover:scale-105 cursor-pointer shadow-xs"
+          title="Go back to change date or place"
+        >
+          <ArrowLeft className="w-3.5 h-3.5 text-rose-600" />
+          <span>Back</span>
+        </button>
+
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 border border-rose-200/70 text-rose-700 text-xs font-semibold">
+          <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+          <span>It’s Officially a Date!</span>
+        </div>
+      </div>
+
       {/* Top celebratory GIF */}
       <div className="relative mx-auto w-36 h-36 sm:w-44 sm:h-44 rounded-2xl overflow-hidden border-2 border-rose-100 shadow-md mb-5 bg-rose-50/50">
         <img
@@ -51,11 +69,6 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
         <div className="absolute top-2 right-2 bg-white/90 p-1 rounded-full shadow-sm">
           <Sparkles className="w-4 h-4 text-amber-500" />
         </div>
-      </div>
-
-      <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold mb-2">
-        <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-        <span>It’s Officially a Date!</span>
       </div>
 
       <h2 className="text-2xl sm:text-3xl font-serif font-bold text-stone-800 tracking-tight">
@@ -137,15 +150,15 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
         </button>
       </div>
 
-      {/* Edit button */}
-      <div className="mt-4 pt-3 border-t border-stone-100">
+      {/* Back to edit button */}
+      <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-center gap-3">
         <button
           type="button"
           onClick={onEdit}
-          className="inline-flex items-center gap-1.5 text-xs text-stone-600 hover:text-rose-600 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-50 hover:bg-stone-100 text-stone-700 text-xs font-semibold border border-stone-200 transition-colors cursor-pointer"
         >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Need to change the date or place? Tap here</span>
+          <RotateCcw className="w-3.5 h-3.5 text-stone-600" />
+          <span>Need to change date or place? Back to Edit</span>
         </button>
       </div>
     </div>
