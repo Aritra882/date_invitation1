@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 
 interface EvasiveButtonProps {
   onEvade?: (count: number) => void;
+  maxDodges?: number;
 }
 
 const EVASIVE_LABELS = [
@@ -12,19 +13,13 @@ const EVASIVE_LABELS = [
   'Too slow! 🤭',
   'Oops, over here! 🏃‍♀️',
   'Nope! 🙈',
-  'Wrong button! 👉',
   'Think again! 💕',
   'Can\'t catch me! ✨',
-  'Almost had it! 😜',
-  'Still here! 💃',
-  'Keep trying! 🏃‍♂️',
-  'Just say yes! 🥰',
-  'Not this one! 🌸',
-  'Too quick! ⚡',
 ];
 
-export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
+export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade, maxDodges = 7 }) => {
   const [hasMoved, setHasMoved] = useState(false);
+  const [isDisappeared, setIsDisappeared] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [dodgeCount, setDodgeCount] = useState(0);
   const [labelIndex, setLabelIndex] = useState(0);
@@ -36,6 +31,17 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
       if (e) {
         if ('preventDefault' in e) e.preventDefault();
         if ('stopPropagation' in e) e.stopPropagation();
+      }
+
+      if (isDisappeared) return;
+
+      const nextCount = dodgeCount + 1;
+
+      // After maxDodges moves, completely disappear the button!
+      if (nextCount > maxDodges) {
+        setIsDisappeared(true);
+        if (onEvade) onEvade(nextCount);
+        return;
       }
 
       const btn = buttonRef.current;
@@ -57,7 +63,6 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
       let newX = Math.floor(Math.random() * (maxX - minX) + minX);
       let newY = Math.floor(Math.random() * (maxY - minY) + minY);
 
-      // Ensure it jumps a noticeable distance from where it currently is so it visibly moves
       if (hasMoved) {
         const curX = posRef.current.x;
         const curY = posRef.current.y;
@@ -69,15 +74,12 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
         }
       }
 
-      // Hard clamp inside viewport boundaries
       newX = Math.min(Math.max(minX, newX), maxX);
       newY = Math.min(Math.max(minY, newY), maxY);
 
       posRef.current = { x: newX, y: newY };
       setPosition({ x: newX, y: newY });
       setHasMoved(true);
-
-      const nextCount = dodgeCount + 1;
       setDodgeCount(nextCount);
       setLabelIndex((prev) => (prev + 1) % EVASIVE_LABELS.length);
 
@@ -85,12 +87,11 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
         onEvade(nextCount);
       }
     },
-    [dodgeCount, hasMoved, onEvade]
+    [dodgeCount, hasMoved, isDisappeared, maxDodges, onEvade]
   );
 
-  // Keep button within screen bounds on window resize or orientation change
   useEffect(() => {
-    if (!hasMoved) return;
+    if (!hasMoved || isDisappeared) return;
 
     const handleResize = () => {
       const btn = buttonRef.current;
@@ -115,7 +116,11 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [hasMoved]);
+  }, [hasMoved, isDisappeared]);
+
+  if (isDisappeared) {
+    return null;
+  }
 
   const buttonElement = (
     <button
@@ -134,7 +139,8 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
               left: `${position.x}px`,
               top: `${position.y}px`,
               zIndex: 99999,
-              transition: 'left 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.15s ease',
+              transition:
+                'left 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.15s ease',
             }
           : undefined
       }
@@ -155,15 +161,8 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade }) => {
 
   return (
     <>
-      {/* If the button has moved, keep a placeholder in the original flex container so the Yes button doesn't jump */}
       {hasMoved ? (
         <>
-          <div
-            className="px-7 py-3.5 text-base sm:text-lg font-medium invisible pointer-events-none select-none"
-            aria-hidden="true"
-          >
-            No
-          </div>
           {typeof document !== 'undefined'
             ? createPortal(buttonElement, document.body)
             : buttonElement}
