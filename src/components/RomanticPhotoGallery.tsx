@@ -205,17 +205,7 @@ export const RomanticPhotoGallery: React.FC = () => {
           Every picture holds a feeling, a spark, and a memory I cherish dearly.
         </p>
 
-        {/* Small Discreet Photo Action Bar */}
-        <div className="mt-2.5 flex items-center justify-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowHelperModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium border border-rose-200/70 transition-colors cursor-pointer"
-          >
-            <Info className="w-3.5 h-3.5" />
-            <span>How to show Srija's photos on Vercel</span>
-          </button>
-        </div>
+
       </div>
 
       {/* 4 Polaroid Grid */}
