@@ -36,7 +36,7 @@ export const ConfirmationCard: React.FC<ConfirmationCardProps> = ({
     }
   };
 
-  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+  const whatsappUrl = `https://wa.me/919007506883?text=${encodeURIComponent(shareText)}`;
 
   return (
     <div className="w-full max-w-lg mx-auto bg-white/95 backdrop-blur-md rounded-3xl p-6 sm:p-8 shadow-2xl shadow-rose-200/50 border border-rose-100 text-center animate-fadeIn">

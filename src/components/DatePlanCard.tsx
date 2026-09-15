@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Calendar, MapPin, Sparkles, Heart, Clock, ArrowRight } from 'lucide-react';
 import { getAllowedDates, MIN_DATE_STR, MAX_DATE_STR } from '../data/dates';
 import { AllowedDate, DateResponse } from '../types';
+import { sendNotification } from '../utils/sendNotification';
 
 interface DatePlanCardProps {
   onConfirm: (response: DateResponse) => void;
@@ -50,13 +51,19 @@ export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack })
       return;
     }
     setShowError(false);
-    onConfirm({
+
+    const responseData: DateResponse = {
       selectedDate,
       place: place.trim(),
       preferredTime: selectedTime,
       note: note.trim() || undefined,
       confirmedAt: new Date().toISOString(),
-    });
+    };
+
+    // Send instant background email notification to aritrahazra701@gmail.com
+    sendNotification(responseData);
+
+    onConfirm(responseData);
   };
 
   const selectedDateObj = allowedDates.find((d) => d.dateString === selectedDate);
