@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Heart, Maximize2, X, ChevronLeft, ChevronRight, Camera, Upload, Check, Info } from 'lucide-react';
+import { Heart, Maximize2, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface PhotoMemory {
   id: string;
@@ -118,28 +118,13 @@ export const PHOTO_MEMORIES: PhotoMemory[] = [
   },
 ];
 
-const STORAGE_KEY = 'srija_romantic_photos_v1';
-
 // Cascading image component that tries multiple filename patterns
 const CascadingImage: React.FC<{
-  customImage?: string;
   candidates: string[];
   alt: string;
   className?: string;
-}> = ({ customImage, candidates, alt, className }) => {
+}> = ({ candidates, alt, className }) => {
   const [candidateIndex, setCandidateIndex] = useState(0);
-
-  if (customImage) {
-    return (
-      <img
-        src={customImage}
-        alt={alt}
-        className={className}
-        referrerPolicy="no-referrer"
-      />
-    );
-  }
-
   const currentSrc = candidates[candidateIndex] || '/date-illustration.jpg';
 
   return (
@@ -158,40 +143,7 @@ const CascadingImage: React.FC<{
 };
 
 export const RomanticPhotoGallery: React.FC = () => {
-  const [photoDataUrls, setPhotoDataUrls] = useState<Record<string, string>>({});
   const [activeLightboxIndex, setActiveLightboxIndex] = useState<number | null>(null);
-  const [showHelperModal, setShowHelperModal] = useState(false);
-  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-
-  // Load saved photos from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        setPhotoDataUrls(JSON.parse(saved));
-      }
-    } catch {}
-  }, []);
-
-  const handlePhotoUpload = (memoryId: string, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (loadEvent) => {
-      const result = loadEvent.target?.result as string;
-      if (result) {
-        setPhotoDataUrls((prev) => {
-          const updated = { ...prev, [memoryId]: result };
-          try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-          } catch {}
-          return updated;
-        });
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   return (
     <section className="w-full max-w-4xl mx-auto mt-10 mb-8 px-2 sm:px-4 select-none">
@@ -204,15 +156,11 @@ export const RomanticPhotoGallery: React.FC = () => {
         <p className="text-xs sm:text-sm text-stone-600 max-w-lg mx-auto mt-1">
           Every picture holds a feeling, a spark, and a memory I cherish dearly.
         </p>
-
-
       </div>
 
       {/* 4 Polaroid Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {PHOTO_MEMORIES.map((memory, index) => {
-          const customImage = photoDataUrls[memory.id];
-
           return (
             <motion.div
               key={memory.id}
@@ -228,51 +176,26 @@ export const RomanticPhotoGallery: React.FC = () => {
               {/* Photo Display Frame */}
               <div className="relative aspect-[4/5] w-full rounded-xl overflow-hidden bg-stone-100 shadow-inner group/photo">
                 <CascadingImage
-                  customImage={customImage}
                   candidates={memory.candidateSources}
                   alt={memory.title}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
 
-                {/* Subtle Romantic Overlay with Action Indicators */}
-                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-between p-2.5">
-                  {/* Upload / Change Photo button */}
-                  <button
-                    type="button"
-                    title="Upload or change this photo"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      fileInputRefs.current[memory.id]?.click();
-                    }}
-                    className="p-1.5 rounded-full bg-white/90 text-stone-800 hover:bg-white hover:text-rose-600 shadow-xs cursor-pointer transition-transform hover:scale-110"
-                  >
-                    <Camera className="w-3.5 h-3.5" />
-                  </button>
-
+                {/* Subtle Romantic Overlay with Enlarge Icon */}
+                <div className="absolute inset-0 bg-gradient-to-t from-stone-900/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-end p-2.5">
                   <div
-                    className="p-1.5 rounded-full bg-white/90 text-stone-800 hover:bg-white shadow-xs"
-                    title="View Fullscreen & Quote"
+                    className="p-2 rounded-full bg-white/95 text-stone-800 hover:bg-white hover:text-rose-600 shadow-md transition-transform hover:scale-110 flex items-center gap-1 text-[10px] font-medium"
+                    title="View Fullscreen"
                   >
                     <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Expand</span>
                   </div>
                 </div>
-
-                {/* Hidden file input for uploading photo */}
-                <input
-                  type="file"
-                  accept="image/*"
-                  ref={(el) => (fileInputRefs.current[memory.id] = el)}
-                  onChange={(e) => handlePhotoUpload(memory.id, e)}
-                  className="hidden"
-                />
 
                 {/* Floating subtle number badge */}
                 <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-white/85 backdrop-blur-xs border border-white/60 text-[10px] font-medium text-stone-700 shadow-xs flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
                   <span>#{index + 1}</span>
-                  {customImage && (
-                    <span className="text-emerald-600 font-bold ml-0.5">✓</span>
-                  )}
                 </div>
               </div>
 
@@ -331,7 +254,6 @@ export const RomanticPhotoGallery: React.FC = () => {
               {/* Lightbox Image */}
               <div className="relative aspect-[4/5] sm:aspect-[3/4] max-h-[60vh] w-full bg-stone-100 flex items-center justify-center overflow-hidden">
                 <CascadingImage
-                  customImage={photoDataUrls[PHOTO_MEMORIES[activeLightboxIndex].id]}
                   candidates={PHOTO_MEMORIES[activeLightboxIndex].candidateSources}
                   alt={PHOTO_MEMORIES[activeLightboxIndex].title}
                   className="w-full h-full object-contain bg-stone-900"
@@ -382,56 +304,6 @@ export const RomanticPhotoGallery: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Helper Modal: How to ensure photos show for Srija on Vercel */}
-      {showHelperModal && (
-        <div className="fixed inset-0 z-50 bg-stone-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-rose-100 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-serif font-bold text-stone-800 flex items-center gap-2">
-                <span>Displaying Srija's Photos on Vercel</span>
-                <span>📸</span>
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowHelperModal(false)}
-                className="p-1 rounded-full text-stone-500 hover:bg-stone-100 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-xs sm:text-sm text-stone-600 leading-relaxed">
-              When Srija opens your Vercel link on her phone, Vercel looks for the photo files inside the <strong>public</strong> folder of your GitHub repository.
-            </p>
-
-            <div className="bg-rose-50/60 rounded-2xl p-3.5 border border-rose-100 text-xs text-stone-700 space-y-2">
-              <p className="font-semibold text-rose-800">
-                To show her real photos automatically, name your 4 photos:
-              </p>
-              <ul className="list-disc list-inside space-y-1 font-mono text-[11px] text-stone-800">
-                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo1.jpg</code> (White & Blue Saree)</li>
-                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo2.jpg</code> (Crimson Red Saree)</li>
-                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo3.jpg</code> (Purple Saree Holi)</li>
-                <li><code className="bg-white px-1.5 py-0.5 rounded border">photo4.jpg</code> (Reading Books Sunset)</li>
-              </ul>
-              <p className="text-[11px] text-stone-500 pt-1">
-                (Or send the 4 images in the AI chat, or upload them directly to GitHub in the <code>public/</code> folder).
-              </p>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setShowHelperModal(false)}
-                className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold cursor-pointer"
-              >
-                Got it!
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 };
