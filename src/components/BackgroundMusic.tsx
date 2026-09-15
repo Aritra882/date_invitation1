@@ -8,167 +8,88 @@ declare global {
   }
 }
 
-// "Kaahe Mose" by Garvit-Priyansh (Official Track)
 const YOUTUBE_VIDEO_ID = 'fjBaWNRYPGk';
 
 export const BackgroundMusic: React.FC = () => {
-  // isPlaying reflects actual audio state; starts false until browser unlocks it
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  // true once the browser's autoplay lock has been lifted (first gesture)
-  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(false);
+  const [isMuted, setIsMuted] = useState<boolean>(true); // starts muted until first gesture
 
   const playerRef = useRef<any>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const manuallyPausedRef = useRef<boolean>(false);
-  const playerIframeId = useRef(`yt-player-${Math.random().toString(36).substring(2, 9)}`);
-  const isUsingNativeAudio = useRef<boolean>(false);
-  const gestureListenersAttached = useRef<boolean>(false);
-  const unlockedRef = useRef<boolean>(false);
+  const playerReady = useRef<boolean>(false);
+  const manuallyPaused = useRef<boolean>(false);
+  const unmuteHandled = useRef<boolean>(false);
+  const playerIframeId = useRef(`yt-${Math.random().toString(36).slice(2, 8)}`);
 
-  // ─── Core playback helpers ───────────────────────────────────────────────
+  // ─── Unmute (called inside a real user gesture so browser allows it) ────
+  const doUnmute = useCallback(() => {
+    if (unmuteHandled.current) return;
+    unmuteHandled.current = true;
 
-  const startPlayback = useCallback(() => {
-    manuallyPausedRef.current = false;
-
-    if (isUsingNativeAudio.current && audioElementRef.current) {
-      audioElementRef.current.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => {
-          // Native failed, try YT
-          if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
-            try {
-              playerRef.current.unMute();
-              playerRef.current.setVolume(85);
-              playerRef.current.playVideo();
-              setIsPlaying(true);
-            } catch {}
-          }
-        });
-      return;
-    }
-
-    if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+    if (playerRef.current && playerReady.current) {
       try {
         playerRef.current.unMute();
         playerRef.current.setVolume(85);
-        playerRef.current.setPlaybackQuality?.('small');
-        playerRef.current.playVideo();
+        setIsMuted(false);
         setIsPlaying(true);
       } catch {}
     }
   }, []);
 
-  const pausePlayback = useCallback(() => {
-    manuallyPausedRef.current = true;
-    audioElementRef.current?.pause();
-    if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
-      try { playerRef.current.pauseVideo(); } catch {}
-    }
-    setIsPlaying(false);
-  }, []);
-
-  const togglePlay = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isPlaying) {
-      pausePlayback();
-    } else {
-      startPlayback();
-    }
-  }, [isPlaying, pausePlayback, startPlayback]);
-
-  // ─── Unlock handler — fires once on first user gesture ──────────────────
-
-  const unlockAndPlay = useCallback(() => {
-    if (unlockedRef.current) return;
-    unlockedRef.current = true;
-    setAudioUnlocked(true);
-
-    if (!manuallyPausedRef.current) {
-      startPlayback();
-    }
-  }, [startPlayback]);
-
-  // ─── Attach one-time gesture listeners ──────────────────────────────────
-
+  // ─── Attach one-shot gesture listeners ──────────────────────────────────
   const attachGestureListeners = useCallback(() => {
-    if (gestureListenersAttached.current) return;
-    gestureListenersAttached.current = true;
-
-    const GESTURE_EVENTS = ['click', 'touchstart', 'pointerdown', 'keydown'];
+    const EVENTS = ['click', 'touchstart', 'pointerdown', 'keydown'];
 
     const handler = () => {
-      unlockAndPlay();
-      // Remove all gesture listeners immediately after first fire
-      GESTURE_EVENTS.forEach((evt) => {
-        window.removeEventListener(evt, handler, true);
-      });
+      doUnmute();
+      EVENTS.forEach((e) => window.removeEventListener(e, handler, true));
     };
 
-    GESTURE_EVENTS.forEach((evt) => {
-      window.addEventListener(evt, handler, { capture: true, passive: true });
-    });
-  }, [unlockAndPlay]);
+    EVENTS.forEach((e) =>
+      window.addEventListener(e, handler, { capture: true, passive: true })
+    );
+  }, [doUnmute]);
 
-  // ─── Try local audio files first ────────────────────────────────────────
+  // ─── Toggle (pause / resume with sound) ─────────────────────────────────
+  const togglePlay = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
 
-  useEffect(() => {
-    const candidateUrls = ['/song.mp3', '/music.mp3', '/audio.mp3', '/kaahe-mose.mp3'];
-    let found = false;
+    // If still muted, first click = unmute + play (don't toggle off)
+    if (isMuted) {
+      doUnmute();
+      return;
+    }
 
-    const tryCandidate = (index: number) => {
-      if (index >= candidateUrls.length || found) return;
-      const audio = new Audio();
-      audio.src = candidateUrls[index];
-      audio.preload = 'auto';
-      audio.loop = true;
-      audio.volume = 0.85;
+    if (!playerRef.current || !playerReady.current) return;
 
-      audio.oncanplaythrough = () => {
-        if (!found) {
-          found = true;
-          isUsingNativeAudio.current = true;
-          audioElementRef.current = audio;
-          // Attempt autoplay immediately (may be blocked by browser)
-          audio.play()
-            .then(() => {
-              unlockedRef.current = true;
-              setAudioUnlocked(true);
-              setIsPlaying(true);
-            })
-            .catch(() => {
-              // Browser blocked autoplay — wait for first gesture
-              attachGestureListeners();
-            });
-        }
-      };
-
-      audio.onerror = () => tryCandidate(index + 1);
-    };
-
-    tryCandidate(0);
-
-    return () => {
-      if (audioElementRef.current) {
-        audioElementRef.current.pause();
-        audioElementRef.current = null;
+    try {
+      if (isPlaying) {
+        manuallyPaused.current = true;
+        playerRef.current.pauseVideo();
+        setIsPlaying(false);
+      } else {
+        manuallyPaused.current = false;
+        playerRef.current.unMute();
+        playerRef.current.setVolume(85);
+        playerRef.current.playVideo();
+        setIsPlaying(true);
       }
-    };
-  }, [attachGestureListeners]);
+    } catch {}
+  }, [isPlaying, isMuted, doUnmute]);
 
-  // ─── Initialize YouTube IFrame Player ───────────────────────────────────
-
+  // ─── Init YouTube IFrame API ─────────────────────────────────────────────
   useEffect(() => {
-    let isCancelled = false;
+    let cancelled = false;
 
     const initPlayer = () => {
-      if (!window.YT || !window.YT.Player || playerRef.current) return;
+      if (!window.YT?.Player || playerRef.current) return;
 
       playerRef.current = new window.YT.Player(playerIframeId.current, {
-        height: '120',
-        width: '200',
+        height: '1',
+        width: '1',
         videoId: YOUTUBE_VIDEO_ID,
         playerVars: {
-          autoplay: 1,
+          autoplay: 1,   // start playing immediately
+          mute: 1,        // muted so browser allows autoplay
           controls: 0,
           loop: 1,
           playlist: YOUTUBE_VIDEO_ID,
@@ -179,43 +100,31 @@ export const BackgroundMusic: React.FC = () => {
           enablejsapi: 1,
           origin: window.location.origin,
           iv_load_policy: 3,
-          mute: 1, // Start muted so autoplay succeeds, then unmute on first gesture
         },
         events: {
           onReady: (event: any) => {
-            if (isCancelled || isUsingNativeAudio.current) return;
+            if (cancelled) return;
+            playerReady.current = true;
             try {
               event.target.setPlaybackQuality?.('small');
-              // Start muted (browsers allow muted autoplay)
-              event.target.mute();
-              event.target.playVideo();
+              event.target.mute();       // ensure muted
+              event.target.setVolume(0);
+              event.target.playVideo();  // start silent playback
+              // Show muted-playing state so UI reflects background is active
+              setIsPlaying(false); // not "playing with sound" yet
+            } catch {}
 
-              // Immediately try to unmute (works if user already interacted)
-              setTimeout(() => {
-                if (isCancelled) return;
-                try {
-                  event.target.unMute();
-                  event.target.setVolume(85);
-                  setIsPlaying(true);
-                  unlockedRef.current = true;
-                  setAudioUnlocked(true);
-                } catch {
-                  // Still blocked — attach gesture listeners to unmute on first tap
-                  attachGestureListeners();
-                }
-              }, 300);
-            } catch {
-              attachGestureListeners();
-            }
+            // Attach gesture listeners — first tap anywhere will unmute
+            attachGestureListeners();
           },
+
           onStateChange: (event: any) => {
-            if (isCancelled) return;
-            if (event.data === window.YT?.PlayerState?.PLAYING) {
-              if (!isUsingNativeAudio.current) setIsPlaying(true);
-            } else if (event.data === window.YT?.PlayerState?.PAUSED) {
-              if (manuallyPausedRef.current) setIsPlaying(false);
-            } else if (event.data === window.YT?.PlayerState?.ENDED) {
-              if (!manuallyPausedRef.current) {
+            if (cancelled) return;
+            const YT = window.YT;
+            if (!YT?.PlayerState) return;
+
+            if (event.data === YT.PlayerState.ENDED) {
+              if (!manuallyPaused.current) {
                 try {
                   event.target.seekTo(0, true);
                   event.target.playVideo();
@@ -228,80 +137,59 @@ export const BackgroundMusic: React.FC = () => {
     };
 
     if (!window.YT) {
-      const existingScript = document.getElementById('yt-iframe-api-script');
-      if (!existingScript) {
+      if (!document.getElementById('yt-iframe-api')) {
         const tag = document.createElement('script');
-        tag.id = 'yt-iframe-api-script';
+        tag.id = 'yt-iframe-api';
         tag.src = 'https://www.youtube.com/iframe_api';
-        document.getElementsByTagName('script')[0].parentNode?.insertBefore(
-          tag,
-          document.getElementsByTagName('script')[0]
-        );
+        document.head.appendChild(tag);
       }
       const prev = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        prev?.();
-        initPlayer();
-      };
+      window.onYouTubeIframeAPIReady = () => { prev?.(); initPlayer(); };
     } else {
       initPlayer();
     }
 
-    // Also attach gesture listeners as a safety net in case both audio paths fail
-    attachGestureListeners();
-
     return () => {
-      isCancelled = true;
-      try {
-        playerRef.current?.destroy?.();
-        playerRef.current = null;
-      } catch {}
+      cancelled = true;
+      try { playerRef.current?.destroy?.(); playerRef.current = null; } catch {}
     };
   }, [attachGestureListeners]);
 
-  // ─── UI ─────────────────────────────────────────────────────────────────
+  // ─── UI ──────────────────────────────────────────────────────────────────
+  const showPlaying = isPlaying && !isMuted;
 
   return (
     <>
-      {/* Hidden YouTube player — kept in viewport to prevent browser throttling */}
+      {/* Hidden YouTube player — kept in viewport corner to prevent browser throttling */}
       <div
         aria-hidden="true"
-        className="fixed bottom-0 right-0 w-36 h-24 opacity-[0.001] pointer-events-none overflow-hidden select-none -z-10"
+        className="fixed bottom-0 right-0 w-1 h-1 opacity-[0.001] pointer-events-none overflow-hidden -z-10"
       >
         <div id={playerIframeId.current} />
       </div>
 
-      {/* Floating Audio Control Button */}
+      {/* Floating control */}
       <aside
         aria-label="Background music controls"
         className="fixed bottom-5 left-5 z-40 select-none"
       >
         <button
           type="button"
-          onClick={(e) => {
-            // First click always unlocks audio
-            if (!audioUnlocked) {
-              e.stopPropagation();
-              unlockAndPlay();
-            } else {
-              togglePlay(e);
-            }
-          }}
+          onClick={togglePlay}
           className={`group flex items-center gap-2.5 px-4 py-2.5 rounded-full text-xs font-semibold backdrop-blur-md shadow-lg border transition-all duration-300 cursor-pointer ${
-            isPlaying
+            showPlaying
               ? 'bg-rose-500/95 text-white border-rose-400 shadow-rose-500/25 hover:bg-rose-600 hover:scale-105'
               : 'bg-white/95 text-stone-700 border-rose-200 shadow-stone-300/40 hover:bg-white hover:text-rose-600 hover:scale-105'
           }`}
-          title={isPlaying ? 'Pause background song' : 'Play background song'}
+          title={showPlaying ? 'Pause background song' : 'Play background song'}
         >
-          {isPlaying ? (
+          {showPlaying ? (
             <>
               <Pause className="w-3.5 h-3.5 fill-current shrink-0" />
               <div className="flex flex-col text-left">
                 <span className="leading-tight">Kaahe Mose</span>
                 <span className="text-[9px] text-rose-100 font-normal opacity-90">Playing • Tap to pause</span>
               </div>
-              {/* Equalizer animation */}
               <div className="flex items-end gap-0.5 h-3 ml-1 shrink-0">
                 <span className="w-0.5 h-2.5 bg-white rounded-full animate-pulse [animation-duration:0.6s]" />
                 <span className="w-0.5 h-3.5 bg-white rounded-full animate-pulse [animation-duration:0.9s]" />
@@ -314,7 +202,7 @@ export const BackgroundMusic: React.FC = () => {
               <Play className="w-3.5 h-3.5 fill-current text-rose-500 shrink-0" />
               <div className="flex flex-col text-left">
                 <span className="leading-tight text-stone-800">
-                  {audioUnlocked ? 'Play Song' : 'Tap to Play ♪'}
+                  {isMuted ? 'Tap anywhere ♪' : 'Play Song'}
                 </span>
                 <span className="text-[9px] text-rose-500 font-normal">Kaahe Mose • Garvit-Priyansh</span>
               </div>
