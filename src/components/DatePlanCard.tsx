@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Calendar, MapPin, Sparkles, Heart, Clock, ArrowRight, Check } from 'lucide-react';
-import { getAllowedDates, MIN_DATE_STR, MAX_DATE_STR, PLACE_SUGGESTIONS } from '../data/dates';
+import { Calendar, MapPin, Sparkles, Heart, Clock, ArrowRight } from 'lucide-react';
+import { getAllowedDates, MIN_DATE_STR, MAX_DATE_STR } from '../data/dates';
 import { AllowedDate, DateResponse } from '../types';
 
 interface DatePlanCardProps {
@@ -150,25 +150,7 @@ export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack })
             />
           </div>
 
-          {/* Inspiration Suggestion Pills */}
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-medium text-stone-600 uppercase tracking-wider">
-              Need inspiration? Tap any idea:
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {PLACE_SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => setPlace(suggestion)}
-                  className="text-xs px-2.5 py-1 rounded-full bg-rose-50/70 hover:bg-rose-100/80 text-rose-800 border border-rose-200/50 transition-colors text-left cursor-pointer flex items-center gap-1"
-                >
-                  <span>{suggestion}</span>
-                  {place === suggestion && <Check className="w-3 h-3 text-rose-600 ml-1" />}
-                </button>
-              ))}
-            </div>
-          </div>
+
         </div>
 
         {/* Optional notes/timing */}
