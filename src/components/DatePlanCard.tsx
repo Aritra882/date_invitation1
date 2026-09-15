@@ -10,13 +10,13 @@ interface DatePlanCardProps {
 
 export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack }) => {
   const allowedDates = getAllowedDates();
-  const [selectedDate, setSelectedDate] = useState<string>('2026-09-19'); // Default to a nice Saturday in the range
+  const [selectedDate, setSelectedDate] = useState<string>(MIN_DATE_STR); // Default to first available date (Sept 26)
   const [place, setPlace] = useState<string>('');
   const [note, setNote] = useState<string>('');
   const [showError, setShowError] = useState(false);
 
   const handleDateChange = (val: string) => {
-    // Strict clamp between 2026-09-16 and 2026-10-05
+    // Strict clamp between 2026-09-26 and 2026-10-09
     if (val < MIN_DATE_STR) {
       setSelectedDate(MIN_DATE_STR);
     } else if (val > MAX_DATE_STR) {
@@ -60,8 +60,8 @@ export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack })
           Let’s Make It Special
         </h2>
         <p className="text-stone-600 text-sm sm:text-base mt-1.5 max-w-md mx-auto">
-          Pick any day between <span className="font-semibold text-rose-700">Sept 16</span> and{' '}
-          <span className="font-semibold text-rose-700">Oct 5</span>, and tell me where you’d love to go.
+          Pick any day between <span className="font-semibold text-rose-700">Sept 26</span> and{' '}
+          <span className="font-semibold text-rose-700">Oct 9</span>, and tell me where you’d love to go.
         </p>
       </div>
 
@@ -74,7 +74,7 @@ export const DatePlanCard: React.FC<DatePlanCardProps> = ({ onConfirm, onBack })
               <span>Choose our date</span>
             </label>
             <span className="text-xs text-rose-600 font-medium bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
-              Sept 16 – Oct 5 only
+              Sept 26 – Oct 9 only
             </span>
           </div>
 

@@ -1099,14 +1099,14 @@ export function getStandaloneHtml(customGifUrl?: string): string {
 
     <h2 style="font-size: 24px; margin-bottom: 6px;">Let's Make It Special</h2>
     <p style="font-size: 13px; color: #6B594E; margin-bottom: 24px;">
-      Pick any day between <strong style="color: #E11D48;">Sept 16</strong> and <strong style="color: #E11D48;">Oct 5</strong>, and tell me where you'd love to go.
+      Pick any day between <strong style="color: #E11D48;">Sept 26</strong> and <strong style="color: #E11D48;">Oct 9</strong>, and tell me where you'd love to go.
     </p>
 
     <!-- Date selector -->
     <div class="form-section">
       <div class="form-label">
         <span>Choose our date 🗓️</span>
-        <span class="form-sublabel">Sept 16 – Oct 5</span>
+        <span class="form-sublabel">Sept 26 – Oct 9</span>
       </div>
 
       <div class="dates-scroll" id="dates-scroll">
@@ -1640,15 +1640,15 @@ export function getStandaloneHtml(customGifUrl?: string): string {
       requestAnimationFrame(animate);
     }
 
-    // --- 4. Date Logic: Strictly Sept 16 to Oct 5 (2026) ---
-    const MIN_DATE = '2026-09-16';
-    const MAX_DATE = '2026-10-05';
-    let selectedDate = '2026-09-19';
+    // --- 4. Date Logic: Strictly Sept 26 to Oct 9 (2026) ---
+    const MIN_DATE = '2026-09-26';
+    const MAX_DATE = '2026-10-09';
+    let selectedDate = '2026-09-26';
 
     const allowableDates = [];
     (function generateAllowableDates() {
-      const cur = new Date(2026, 8, 16); // Sept 16
-      const end = new Date(2026, 9, 5);  // Oct 5
+      const cur = new Date(2026, 8, 26); // Sept 26
+      const end = new Date(2026, 9, 9);  // Oct 9
 
       while (cur <= end) {
         const y = cur.getFullYear();

@@ -1,12 +1,12 @@
 import { AllowedDate } from '../types';
 
-export const MIN_DATE_STR = '2026-09-16';
-export const MAX_DATE_STR = '2026-10-05';
+export const MIN_DATE_STR = '2026-09-26';
+export const MAX_DATE_STR = '2026-10-09';
 
 export function getAllowedDates(): AllowedDate[] {
   const dates: AllowedDate[] = [];
-  const current = new Date(2026, 8, 16); // Sept 16, 2026 (month is 0-indexed: 8 = Sept)
-  const end = new Date(2026, 9, 5); // Oct 5, 2026 (month 9 = Oct)
+  const current = new Date(2026, 8, 26); // Sept 26, 2026 (month is 0-indexed: 8 = Sept)
+  const end = new Date(2026, 9, 9); // Oct 9, 2026 (month 9 = Oct)
 
   while (current <= end) {
     const year = current.getFullYear();
