@@ -12,68 +12,61 @@ declare global {
 const YOUTUBE_VIDEO_ID = 'fjBaWNRYPGk';
 
 export const BackgroundMusic: React.FC = () => {
-  const [isPlaying, setIsPlaying] = useState<boolean>(true);
-  const [hasInteracted, setHasInteracted] = useState<boolean>(false);
+  // isPlaying reflects actual audio state; starts false until browser unlocks it
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  // true once the browser's autoplay lock has been lifted (first gesture)
+  const [audioUnlocked, setAudioUnlocked] = useState<boolean>(false);
+
   const playerRef = useRef<any>(null);
   const audioElementRef = useRef<HTMLAudioElement | null>(null);
   const manuallyPausedRef = useRef<boolean>(false);
   const playerIframeId = useRef(`yt-player-${Math.random().toString(36).substring(2, 9)}`);
   const isUsingNativeAudio = useRef<boolean>(false);
+  const gestureListenersAttached = useRef<boolean>(false);
+  const unlockedRef = useRef<boolean>(false);
 
-  // Helper to start playback smoothly across either engine
+  // ─── Core playback helpers ───────────────────────────────────────────────
+
   const startPlayback = useCallback(() => {
     manuallyPausedRef.current = false;
-    setHasInteracted(true);
 
-    // If native audio is available and working, prioritize it for zero latency
     if (isUsingNativeAudio.current && audioElementRef.current) {
-      audioElementRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(() => {
-        // Fallback to YouTube
-        if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
-          try {
-            playerRef.current.unMute();
-            playerRef.current.setVolume(85);
-            playerRef.current.playVideo();
-            setIsPlaying(true);
-          } catch {}
-        }
-      });
+      audioElementRef.current.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          // Native failed, try YT
+          if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
+            try {
+              playerRef.current.unMute();
+              playerRef.current.setVolume(85);
+              playerRef.current.playVideo();
+              setIsPlaying(true);
+            } catch {}
+          }
+        });
       return;
     }
 
-    // YouTube playback
-    if (playerRef.current) {
+    if (playerRef.current && typeof playerRef.current.playVideo === 'function') {
       try {
-        if (typeof playerRef.current.unMute === 'function') playerRef.current.unMute();
-        if (typeof playerRef.current.setVolume === 'function') playerRef.current.setVolume(85);
-        if (typeof playerRef.current.setPlaybackQuality === 'function') {
-          playerRef.current.setPlaybackQuality('small'); // Minimal bandwidth for zero-lag streaming
-        }
-        if (typeof playerRef.current.playVideo === 'function') {
-          playerRef.current.playVideo();
-        }
+        playerRef.current.unMute();
+        playerRef.current.setVolume(85);
+        playerRef.current.setPlaybackQuality?.('small');
+        playerRef.current.playVideo();
         setIsPlaying(true);
       } catch {}
     }
   }, []);
 
-  // Helper to pause playback smoothly
   const pausePlayback = useCallback(() => {
     manuallyPausedRef.current = true;
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-    }
+    audioElementRef.current?.pause();
     if (playerRef.current && typeof playerRef.current.pauseVideo === 'function') {
-      try {
-        playerRef.current.pauseVideo();
-      } catch {}
+      try { playerRef.current.pauseVideo(); } catch {}
     }
     setIsPlaying(false);
   }, []);
 
-  // Toggle button handler
   const togglePlay = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (isPlaying) {
@@ -83,38 +76,73 @@ export const BackgroundMusic: React.FC = () => {
     }
   }, [isPlaying, pausePlayback, startPlayback]);
 
-  // Try loading local audio file first (if user puts song.mp3 or music.mp3 in /public)
-  useEffect(() => {
-    const testAudio = new Audio();
-    const candidateUrls = ['/song.mp3', '/music.mp3', '/audio.mp3', '/kaahe-mose.mp3'];
+  // ─── Unlock handler — fires once on first user gesture ──────────────────
 
+  const unlockAndPlay = useCallback(() => {
+    if (unlockedRef.current) return;
+    unlockedRef.current = true;
+    setAudioUnlocked(true);
+
+    if (!manuallyPausedRef.current) {
+      startPlayback();
+    }
+  }, [startPlayback]);
+
+  // ─── Attach one-time gesture listeners ──────────────────────────────────
+
+  const attachGestureListeners = useCallback(() => {
+    if (gestureListenersAttached.current) return;
+    gestureListenersAttached.current = true;
+
+    const GESTURE_EVENTS = ['click', 'touchstart', 'pointerdown', 'keydown'];
+
+    const handler = () => {
+      unlockAndPlay();
+      // Remove all gesture listeners immediately after first fire
+      GESTURE_EVENTS.forEach((evt) => {
+        window.removeEventListener(evt, handler, true);
+      });
+    };
+
+    GESTURE_EVENTS.forEach((evt) => {
+      window.addEventListener(evt, handler, { capture: true, passive: true });
+    });
+  }, [unlockAndPlay]);
+
+  // ─── Try local audio files first ────────────────────────────────────────
+
+  useEffect(() => {
+    const candidateUrls = ['/song.mp3', '/music.mp3', '/audio.mp3', '/kaahe-mose.mp3'];
     let found = false;
+
     const tryCandidate = (index: number) => {
       if (index >= candidateUrls.length || found) return;
-      const url = candidateUrls[index];
-      
       const audio = new Audio();
-      audio.src = url;
+      audio.src = candidateUrls[index];
       audio.preload = 'auto';
       audio.loop = true;
+      audio.volume = 0.85;
 
       audio.oncanplaythrough = () => {
         if (!found) {
           found = true;
           isUsingNativeAudio.current = true;
           audioElementRef.current = audio;
-          audio.volume = 0.85;
-          audio.play().then(() => {
-            setIsPlaying(true);
-          }).catch(() => {
-            // Autoplay policy waiting for user gesture
-          });
+          // Attempt autoplay immediately (may be blocked by browser)
+          audio.play()
+            .then(() => {
+              unlockedRef.current = true;
+              setAudioUnlocked(true);
+              setIsPlaying(true);
+            })
+            .catch(() => {
+              // Browser blocked autoplay — wait for first gesture
+              attachGestureListeners();
+            });
         }
       };
 
-      audio.onerror = () => {
-        tryCandidate(index + 1);
-      };
+      audio.onerror = () => tryCandidate(index + 1);
     };
 
     tryCandidate(0);
@@ -125,15 +153,15 @@ export const BackgroundMusic: React.FC = () => {
         audioElementRef.current = null;
       }
     };
-  }, []);
+  }, [attachGestureListeners]);
 
-  // Initialize Embedded High-Performance YouTube Audio Engine
+  // ─── Initialize YouTube IFrame Player ───────────────────────────────────
+
   useEffect(() => {
     let isCancelled = false;
 
     const initPlayer = () => {
-      if (!window.YT || !window.YT.Player) return;
-      if (playerRef.current) return;
+      if (!window.YT || !window.YT.Player || playerRef.current) return;
 
       playerRef.current = new window.YT.Player(playerIframeId.current, {
         height: '120',
@@ -143,7 +171,7 @@ export const BackgroundMusic: React.FC = () => {
           autoplay: 1,
           controls: 0,
           loop: 1,
-          playlist: YOUTUBE_VIDEO_ID, // Built-in loop
+          playlist: YOUTUBE_VIDEO_ID,
           playsinline: 1,
           modestbranding: 1,
           fs: 0,
@@ -151,33 +179,42 @@ export const BackgroundMusic: React.FC = () => {
           enablejsapi: 1,
           origin: window.location.origin,
           iv_load_policy: 3,
+          mute: 1, // Start muted so autoplay succeeds, then unmute on first gesture
         },
         events: {
           onReady: (event: any) => {
-            if (isCancelled) return;
+            if (isCancelled || isUsingNativeAudio.current) return;
             try {
-              // Crucial for performance: set to lowest video quality so 100% of bandwidth goes to audio
-              if (typeof event.target.setPlaybackQuality === 'function') {
-                event.target.setPlaybackQuality('small');
-              }
-              if (!manuallyPausedRef.current && !isUsingNativeAudio.current) {
-                event.target.unMute();
-                event.target.setVolume(85);
-                event.target.playVideo();
-                setIsPlaying(true);
-              }
-            } catch {}
+              event.target.setPlaybackQuality?.('small');
+              // Start muted (browsers allow muted autoplay)
+              event.target.mute();
+              event.target.playVideo();
+
+              // Immediately try to unmute (works if user already interacted)
+              setTimeout(() => {
+                if (isCancelled) return;
+                try {
+                  event.target.unMute();
+                  event.target.setVolume(85);
+                  setIsPlaying(true);
+                  unlockedRef.current = true;
+                  setAudioUnlocked(true);
+                } catch {
+                  // Still blocked — attach gesture listeners to unmute on first tap
+                  attachGestureListeners();
+                }
+              }, 300);
+            } catch {
+              attachGestureListeners();
+            }
           },
           onStateChange: (event: any) => {
             if (isCancelled) return;
-            if (event.data === window.YT.PlayerState.PLAYING) {
-              setIsPlaying(true);
-            } else if (event.data === window.YT.PlayerState.PAUSED) {
-              if (manuallyPausedRef.current) {
-                setIsPlaying(false);
-              }
-            } else if (event.data === window.YT.PlayerState.ENDED) {
-              // Instant seamless loop without buffering reload
+            if (event.data === window.YT?.PlayerState?.PLAYING) {
+              if (!isUsingNativeAudio.current) setIsPlaying(true);
+            } else if (event.data === window.YT?.PlayerState?.PAUSED) {
+              if (manuallyPausedRef.current) setIsPlaying(false);
+            } else if (event.data === window.YT?.PlayerState?.ENDED) {
               if (!manuallyPausedRef.current) {
                 try {
                   event.target.seekTo(0, true);
@@ -190,63 +227,43 @@ export const BackgroundMusic: React.FC = () => {
       });
     };
 
-    // Load YouTube IFrame API script cleanly
     if (!window.YT) {
       const existingScript = document.getElementById('yt-iframe-api-script');
       if (!existingScript) {
         const tag = document.createElement('script');
         tag.id = 'yt-iframe-api-script';
         tag.src = 'https://www.youtube.com/iframe_api';
-        const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+        document.getElementsByTagName('script')[0].parentNode?.insertBefore(
+          tag,
+          document.getElementsByTagName('script')[0]
+        );
       }
-
-      const prevOnReady = window.onYouTubeIframeAPIReady;
+      const prev = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => {
-        if (prevOnReady) prevOnReady();
+        prev?.();
         initPlayer();
       };
     } else {
       initPlayer();
     }
 
-    // Modern browsers strictly require 1 interaction to unlock sound if autoplay was blocked.
-    // This listener catches the VERY FIRST tap, touch, click, or scroll anywhere on the screen,
-    // immediately starting the music smoothly and removing listeners.
-    const handleFirstGesture = () => {
-      if (!manuallyPausedRef.current) {
-        startPlayback();
-      }
-    };
-
-    const gestureEvents = ['click', 'touchstart', 'touchend', 'pointerdown', 'scroll', 'keydown'];
-    gestureEvents.forEach((evt) => {
-      window.addEventListener(evt, handleFirstGesture, { capture: true, passive: true });
-    });
+    // Also attach gesture listeners as a safety net in case both audio paths fail
+    attachGestureListeners();
 
     return () => {
       isCancelled = true;
-      gestureEvents.forEach((evt) => {
-        window.removeEventListener(evt, handleFirstGesture, { capture: true });
-      });
       try {
-        if (playerRef.current && playerRef.current.destroy) {
-          playerRef.current.destroy();
-          playerRef.current = null;
-        }
+        playerRef.current?.destroy?.();
+        playerRef.current = null;
       } catch {}
     };
-  }, [startPlayback]);
+  }, [attachGestureListeners]);
+
+  // ─── UI ─────────────────────────────────────────────────────────────────
 
   return (
     <>
-      {/* 
-        CRITICAL FIX FOR ZERO LAG:
-        We position the YouTube player inside the active viewport at bottom-right with 
-        opacity-[0.001] rather than offscreen (-bottom-999px).
-        Mobile Safari and Chromium throttle offscreen/1px iframes to save power, which 
-        caused the stuttering/lagging. Keeping it in the viewport ensures full 60fps audio decoding!
-      */}
+      {/* Hidden YouTube player — kept in viewport to prevent browser throttling */}
       <div
         aria-hidden="true"
         className="fixed bottom-0 right-0 w-36 h-24 opacity-[0.001] pointer-events-none overflow-hidden select-none -z-10"
@@ -261,7 +278,15 @@ export const BackgroundMusic: React.FC = () => {
       >
         <button
           type="button"
-          onClick={togglePlay}
+          onClick={(e) => {
+            // First click always unlocks audio
+            if (!audioUnlocked) {
+              e.stopPropagation();
+              unlockAndPlay();
+            } else {
+              togglePlay(e);
+            }
+          }}
           className={`group flex items-center gap-2.5 px-4 py-2.5 rounded-full text-xs font-semibold backdrop-blur-md shadow-lg border transition-all duration-300 cursor-pointer ${
             isPlaying
               ? 'bg-rose-500/95 text-white border-rose-400 shadow-rose-500/25 hover:bg-rose-600 hover:scale-105'
@@ -288,7 +313,9 @@ export const BackgroundMusic: React.FC = () => {
             <>
               <Play className="w-3.5 h-3.5 fill-current text-rose-500 shrink-0" />
               <div className="flex flex-col text-left">
-                <span className="leading-tight text-stone-800">Play Song</span>
+                <span className="leading-tight text-stone-800">
+                  {audioUnlocked ? 'Play Song' : 'Tap to Play ♪'}
+                </span>
                 <span className="text-[9px] text-rose-500 font-normal">Kaahe Mose • Garvit-Priyansh</span>
               </div>
               <Music className="w-3 h-3 text-rose-400 animate-bounce shrink-0 ml-0.5" />
