@@ -15,9 +15,16 @@ const EVASIVE_LABELS = [
   'Nope! 🙈',
   'Think again! 💕',
   'Can\'t catch me! ✨',
+  'Almost had it! 😜',
+  'Still here! 💃',
+  'Keep trying! 🏃‍♂️',
+  'Just say yes! 🥰',
+  'Not this one! 🌸',
+  'Too quick! ⚡',
+  'Giving up yet? 🤭',
 ];
 
-export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade, maxDodges = 7 }) => {
+export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade, maxDodges = 15 }) => {
   const [hasMoved, setHasMoved] = useState(false);
   const [isDisappeared, setIsDisappeared] = useState(false);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -37,7 +44,7 @@ export const EvasiveButton: React.FC<EvasiveButtonProps> = ({ onEvade, maxDodges
 
       const nextCount = dodgeCount + 1;
 
-      // After maxDodges moves, completely disappear the button!
+      // After maxDodges moves (15 times), completely disappear the button!
       if (nextCount > maxDodges) {
         setIsDisappeared(true);
         if (onEvade) onEvade(nextCount);
